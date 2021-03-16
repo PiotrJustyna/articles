@@ -1,0 +1,33 @@
+@startuml
+
+package "Cluster" {
+  package "Silo 1 - container 1" {
+    [silo 1 grain 1 activation 1]
+    [silo 1 grain 1 activation 2]
+    [silo 1 grain 2 activation 1]
+    [silo 1 grain 2 activation 2]
+  }
+
+  package "Silo 2 - container 2" {
+    [silo 2 grain 1 activation 1]
+    [silo 2 grain 1 activation 2]
+    [silo 2 grain 2 activation 1]
+    [silo 2 grain 2 activation 2]
+  }
+
+  package "Silo 3 - container 3" {
+    [silo 3 grain 1 activation 1]
+    [silo 3 grain 1 activation 2]
+    [silo 3 grain 2 activation 1]
+    [silo 3 grain 2 activation 2]
+  }
+
+  package "Silo 4 - container 4" {
+    [silo 4 grain 1 activation 1]
+    [silo 4 grain 1 activation 2]
+    [silo 4 grain 2 activation 1]
+    [silo 4 grain 2 activation 2]
+  }
+}
+
+@enduml

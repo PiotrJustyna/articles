@@ -1,0 +1,38 @@
+@startuml
+
+interface HTTP
+
+package "API" {
+  HTTP -- [instance 1]
+  [instance 2]
+  [instance 3]
+}
+
+package "Data Sources" {
+  [source 1]
+  [source 2]
+  [source 3]
+}
+
+package "Supporting Applications" {
+  [application 1]
+  [application 2]
+  [application 3]
+
+  note right of [application 1]
+    * post processing
+    * machine learning
+    * cleanup
+    * etc.
+  endnote
+}
+
+[instance 1] --> [source 1]
+[instance 1] --> [source 2]
+[instance 1] --> [source 3]
+
+[application 1] --> [source 1]
+[application 1] --> [source 2]
+[application 1] --> [source 3]
+
+@enduml

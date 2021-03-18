@@ -56,7 +56,7 @@ In simplest terms, 3-tier microservices can be illustrated with the following di
 
 ![microservices](./../out/orleans/diagrams/microservices/microservices.png)
 
-Fore the sake of clarity, only one component from each group (instance 1, application 1) has visible connections to other groups.
+For the sake of clarity, only one component from each group (instance 1, application 1) has visible connections to other groups.
 
 ## actors
 
@@ -188,7 +188,7 @@ In simplest terms, microservices working with Virtual Actors can be illustrated 
 
 ![microservices-actors](./../out/orleans/diagrams/microservices-actors/microservices-actors.png)
 
-Fore the sake of clarity, only one component from each group (instance 1, application 1, actor 1 instance 1) have visible connections to other groups.
+For the sake of clarity, only one component from each group (instance 1, application 1, actor 1 instance 1) have visible connections to other groups.
 
 ## examples
 

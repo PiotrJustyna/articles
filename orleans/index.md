@@ -164,7 +164,7 @@ In such simple scenario, the benefits of such division could be difficult to ima
 * thousands of asynchronous tasks per second
 * even a modest number of customer requests per second
 
-we can quickly arrive at very substantial savings in asynchronous tasks which translate directly to increased API throughput (tasks previously busy with managing I/O calls and now busy accepting more customer requests), reduced API complexity, narrower failure blast radius and many more benefits wthich will be discussed later.
+we can quickly arrive at very substantial savings in asynchronous tasks which translate directly to increased API throughput (tasks previously busy with managing I/O calls and now busy accepting more customer requests), reduced API complexity, narrower failure blast radius and many more benefits which will be discussed later.
 
 Traditionally, designers would group such *modules* into a more coherent union, like e.g. Bounded Context [[8]](#8---microservices-apache-kafka-and-domain-driven-design) and place such union in an independent service. With the advent of Virtual Actors, we have dramatically more liberty when it comes to granular division of tasks which do not necessarily have to form a separate service or a Bounded Context.
 

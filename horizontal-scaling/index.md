@@ -57,3 +57,7 @@ The main difference between scenario 2 and scenario 1 is that in scenario 2 we a
 | 1. max per-container throughput where p99 is under SLA | ? | ? |
 | 2. horizontal scaling speed under linearly increasing traffic volumes | ? | ? |
 | 3. horizontal scaling speed under unpredictably changing traffic volumes | ? | ? |
+
+## questions
+
+Orleans stats - grains and silos.

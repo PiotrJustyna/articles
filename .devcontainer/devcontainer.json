@@ -11,7 +11,8 @@
 	},
 
 	"extensions": [
-		"yzhang.markdown-all-in-one"
+		"yzhang.markdown-all-in-one",
+		"yzane.markdown-pdf"
 	],
 
 	"remoteUser": "vscode"

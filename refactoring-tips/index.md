@@ -12,6 +12,7 @@
       - [mapping logic](#mapping-logic)
     - [step 5 - unit test](#step-5---unit-test)
   - [conclusion](#conclusion)
+  - [2021-10-01 revision](#2021-10-01-revision)
 
 # practical functional refactoring tips for the imperative world
 
@@ -209,3 +210,13 @@ Looking at the code side by side, responsibility of each function is immediately
 Furthermore, and that is the key win of our proposed refactoring, it is guaranteed that all the code in the F# library is pure and can be composed with no preparations.
 
 Finally, it is easy to confuse this advice with SOLID's "S", but the twist is just to focus on pure responsibilities. Refactoring effectful code will be covered in future articles.
+
+## 2021-10-01 revision
+
+I am grateful to have received some great feedback after publishing the article:
+
+* [fsunit](https://fsprojects.github.io/FsUnit/) replaced with [unquote](https://github.com/SwensenSoftware/unquote) - more precise type checking, better messages
+
+* simplified `ArgumentException`: https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/exception-handling/the-invalidarg-function
+  * before: `raise (new ArgumentException(nameof(apiUrlFormat)))`
+  * after: `invalidArg (nameof apiUrlFormat) ""`

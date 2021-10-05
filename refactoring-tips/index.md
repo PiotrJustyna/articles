@@ -220,3 +220,12 @@ I am grateful to have received some great feedback after publishing the article:
 * simplified `ArgumentException`: https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/exception-handling/the-invalidarg-function
   * before: `raise (new ArgumentException(nameof(apiUrlFormat)))`
   * after: `invalidArg (nameof apiUrlFormat) ""`
+
+* `if/then/else` simplified in case there's no `else`:
+  * before: `if confition then A else ()`
+  * before: `if confition then A`
+
+* null checking on the C# side - this is slightly more involved and requires us to take a step back and revise what we know about F# types.
+  * [Classes (F#)](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/classes)
+  * [Null Values](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/values/null-values)
+  * [AllowNullLiteralAttribute](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-core-allownullliteralattribute.html#Value)

@@ -8,14 +8,13 @@ which covered specifically the pure components of any program. You can find
 it [here](https://github.com/PiotrJustyna/articles/blob/main/refactoring-tips/index.md). Every computer program consists
 of a mixture of two types of code:
 
-* **pure code** - no side effects, code executed multiple times with the same input always yields the same results (
-  think Excel spreadsheet)
+* **pure code** - no side effects, code executed multiple times with the same input always yields the same results (think Excel spreadsheet)
 * **effectful/impure code** - code causing side effects: database/file system/network interactions but also things as
   trivial as telling the time (think distributed system where many machines are working together)
 
-This article focuses on the latter: the effectful code. It should be a bit closer to real life when compared to the last
+This article focuses on the latter: the effectful code. It should be a bit closer to real life compared to the last
 article in the "practical functional refactoring tips" series and serve as a reference for the most common day-to-day
-tasks most programmers perform. The aim is to embrace side effects as something that just needs to happen, but also to
+tasks most programmers handle. The aim is to embrace side effects as something that just needs to happen, but also to
 keep them manageable and explicit, so that the code is relatively easy to maintain and extend.
 
 Finally, the article should also serve as a good starting point for those wanting to experiment with adopting F# but are
@@ -87,3 +86,9 @@ All listed terms and concepts are going to be demonstrated with easy to digest e
 In the article I published previously, we went through refactoring the pure responsibilities out of C# [mercury-legacy](https://github.com/PiotrJustyna/mercury-legacy) into [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functional) - a C#-F# hybrid where the pure code was written in F# and the effectful code was written in C#.
 
 This time, we are going to need a new repository: [mercury-functional](https://github.com/PiotrJustyna/mercury-functional) written exclusively in F# and based on [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functional).
+
+## further reading
+
+* [Async programming in F#](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async)
+* [The F# Asynchronous Programming Model](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/async-padl-revised-v2.pdf)
+* [F# Async Guide](https://medium.com/@eulerfx/f-async-guide-eb3c8a2d180a)

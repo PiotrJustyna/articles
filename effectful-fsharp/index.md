@@ -1,6 +1,6 @@
 # practical functional refactoring tips for the imperative world - part 2: effectful f#
 
-## introduction + previous article
+## introduction
 
 This article covers a practical to follow refactoring workflow which helps transform difficult to manage legacy code
 into a more functional, easier to maintain version of itself. It is a follow up to an article I published last quarter
@@ -8,7 +8,8 @@ which covered specifically the pure components of any program. You can find
 it [here](https://github.com/PiotrJustyna/articles/blob/main/refactoring-tips/index.md). Every computer program consists
 of a mixture of two types of code:
 
-* **pure code** - no side effects, code executed multiple times with the same input always yields the same results (think Excel spreadsheet)
+* **pure code** - no side effects, code executed multiple times with the same input always yields the same results (
+  think Excel spreadsheet)
 * **effectful/impure code** - code causing side effects: database/file system/network interactions but also things as
   trivial as telling the time (think distributed system where many machines are working together)
 
@@ -58,6 +59,7 @@ Let's start with the reference material and terminology:
     * [`Async.Start`](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asyncstart)
     * [`Async.StartChild`](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asyncstartchild)
     * [`Async.Catch`](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asynccatch)
+    * [`Async.AwaitTask`](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asyncawaittask)
 
 * `async { }` - computation expression/asynchronous expression. All expressions of such form are of type `Async<T>` for
   some `T`. [*source*](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/async-padl-revised-v2.pdf)
@@ -69,6 +71,7 @@ Let's start with the reference material and terminology:
 
 But here is where it gets interesting and where most implementation challenges are going to surface:
 
+* C# - F# interop (`Async` vs `Task`)
 * exceptions
     * C#'s exception types are supported
     * nested
@@ -83,9 +86,93 @@ All listed terms and concepts are going to be demonstrated with easy to digest e
 
 ## mercury-functional
 
-In the article I published previously, we went through refactoring the pure responsibilities out of C# [mercury-legacy](https://github.com/PiotrJustyna/mercury-legacy) into [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functional) - a C#-F# hybrid where the pure code was written in F# and the effectful code was written in C#.
+In the article I published previously, we went through refactoring the pure responsibilities out of
+C# [mercury-legacy](https://github.com/PiotrJustyna/mercury-legacy)
+into [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functional) - a C#-F# hybrid where the pure
+code was written in F# and the effectful code was written in C#.
 
-This time, we are going to need a new repository: [mercury-functional](https://github.com/PiotrJustyna/mercury-functional) written exclusively in F# and based on [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functional).
+This time, we are going to need a new
+repository: [mercury-functional](https://github.com/PiotrJustyna/mercury-functional) written exclusively in F# and based
+on [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functional).
+
+### mercury code
+
+Let's take a close look at the first set of differences between the two languages - the `main`/`Main` functions (the entry point to the program):
+
+#### main - C#
+
+```c#
+public static async Task Main(string[] args)
+{
+    Log("function is starting...");
+
+    var apiUrlFormat = args[0];
+
+    var domain = args[1];
+
+    FSharpOption<Models.WhoisResponse> response = await GetWhoisResponse(
+        apiUrlFormat,
+        domain);
+
+    Log(response.ToString());
+    Log("function execution finished");
+}
+```
+
+#### main - F#
+
+```f#
+[<EntryPoint>]
+let main argv =
+    log "function is starting..."
+
+    let apiUrlFormat = argv.[0]
+
+    let domain = argv.[1]
+
+    let job =
+        async { return! getWhoisResponse apiUrlFormat domain }
+
+    let response = Async.RunSynchronously(job)
+
+    printfn $"{response.ToString()}"
+
+    log "function execution finished"
+
+    0
+```
+
+#### differences
+
+* In the C# version, the `response` object is a result of an asynchronous function (GetWhoisResponse) being started and `await`ed.
+* In the F# version, we have slightly more explicitly defined options of how the asynchronous `job` can get executed:
+  * very much like a traditional C# `Task`, `job` only gets created and not immediately invoked
+  * `response` is a result of `job` getting executed synchronously (no real benefits running it synchronously in our case), but other options are also available, e.g. `Async.StartChild` (asynchronous execution).
+* `!` notation allows us to nearly seamlessly introduce `Async` type into the code without too many changes. The key difference beeing the `async` vs expression results:
+  * `let! pat = expr in aexpr` - execute & bind async. Example:
+    ```f#
+    // apiResponse is of type HttpResponseMessage
+    let! apiResponse = client.GetAsync(apiUrl, cancellationToken) |> Async.AwaitTask
+    ```
+  * `let pat = expr in aexpr` - execute & bind expression
+    ```f#
+    // apiResponse is of type Async<HttpResponseMessage>
+    let apiResponse = client.GetAsync(apiUrl, cancellationToken) |> Async.AwaitTask
+    ```
+  [source - chapter 2, An Overview of F# Asynchronous Programming](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/async-padl-revised-v2.pdf)
+* It is possible to pass in a `CancellationToken` to `Async.RunSynchronously` and let it trickle down the execution chain (that is done implicitly) but in our case, `getWhoisResponse` has its own `CancellationTokenSource`.
+
+#### log
+
+#### getWhoisResponse
+
+### cancellations
+
+step by step
+
+### exceptions
+
+step by step
 
 ## further reading
 

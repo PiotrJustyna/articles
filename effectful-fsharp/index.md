@@ -1,4 +1,19 @@
-# practical functional refactoring tips for the imperative world - part 2: effectful f#
+- [practical functional refactoring tips for the imperative world - part 2: effectful f&#35;](#practical-functional-refactoring-tips-for-the-imperative-world---part-2-effectful-f)
+  - [introduction](#introduction)
+  - [how did we get here](#how-did-we-get-here)
+  - [asynchronous code](#asynchronous-code)
+  - [asynchrony in f&#35;](#asynchrony-in-f)
+  - [mercury-functional](#mercury-functional)
+    - [mercury code](#mercury-code)
+      - [main - C&#35;](#main---c)
+      - [main - F&#35;](#main---f)
+      - [differences](#differences)
+      - [log](#log)
+      - [getWhoisResponse - C&#35;](#getwhoisresponse---c)
+      - [getWhoisResponse - F&#35;](#getwhoisresponse---f)
+  - [further reading](#further-reading)
+
+# practical functional refactoring tips for the imperative world - part 2: effectful f&#35;
 
 ## introduction
 
@@ -43,7 +58,7 @@ The trick to understanding asynchronous programming is to accept what it is/is n
 
 [source - Async programming in F#](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asynchrony-defined)
 
-## asynchrony in f#
+## asynchrony in f&#35;
 
 Let's start with the reference material and terminology:
 
@@ -71,18 +86,17 @@ Let's start with the reference material and terminology:
 
 But here is where it gets interesting and where most implementation challenges are going to surface:
 
-* C# - F# interop (`Async` vs `Task`)
+* C# - F# interop (`Async` vs `Task`) TODO, covered in getWhoisResponse
 * exceptions
     * C#'s exception types are supported
-    * nested
 * cancellations
     * C#'s `CancellationTokenSource` and `CancellationToken` are both supported
     * cancellation tokens are implicitly propagated through the execution of an asynchronous operation.
     * cancellation tokens are provided at the entry point to the execution of an asynchronous computation,
       e.g.: `Async.RunSynchronously`, `Async.StartImmediate`, `Async.Start`
-    * nested cancellations
-
-All listed terms and concepts are going to be demonstrated with easy to digest examples below.
+    * cancelling nested asynchronous executions - cancellation tokens are passed implicitly to nested asynchronous expressions, but depending on how asynchronous work gets started, cancellations are handled differently in the nested operations, e.g.:
+      * [Async.Start](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asyncstart) - If the parent computation is canceled, no child computations are canceled.
+      * [Async.StartChild](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asyncstartchild) - If the parent computation is canceled, the child computation is also canceled.
 
 ## mercury-functional
 
@@ -97,9 +111,9 @@ on [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functi
 
 ### mercury code
 
-Let's take a close look at the first set of differences between the two languages - the `main`/`Main` functions (the entry point to the program):
+Compared to `mercury-pure-functional`, both repositories are quite similar with one exception: the Host project. The project contains 3 functions which represent interesting differences between both implementations and we'll take a close look at all three. Let's start with the `main`/`Main` functions (the entry point to the program):
 
-#### main - C#
+#### main - C&#35;
 
 ```c#
 public static async Task Main(string[] args)
@@ -119,7 +133,7 @@ public static async Task Main(string[] args)
 }
 ```
 
-#### main - F#
+#### main - F&#35;
 
 ```f#
 [<EntryPoint>]
@@ -144,10 +158,10 @@ let main argv =
 
 #### differences
 
-* In the C# version, the `response` object is a result of an asynchronous function (GetWhoisResponse) being started and `await`ed.
+* In the C# version, the `response` object is a result of an asynchronous function (`GetWhoisResponse`) being started and `await`ed.
 * In the F# version, we have slightly more explicitly defined options of how the asynchronous `job` can get executed:
   * very much like a traditional C# `Task`, `job` only gets created and not immediately invoked
-  * `response` is a result of `job` getting executed synchronously (no real benefits running it synchronously in our case), but other options are also available, e.g. `Async.StartChild` (asynchronous execution).
+  * `response` is a result of `job` getting executed synchronously (no real benefits running it synchronously in our case), but other options are also available, e.g. `Async.StartChild` (for asynchronous execution).
 * `!` notation allows us to nearly seamlessly introduce `Async` type into the code without too many changes. The key difference beeing the `async` vs expression results:
   * `let! pat = expr in aexpr` - execute & bind async. Example:
     ```f#
@@ -164,15 +178,84 @@ let main argv =
 
 #### log
 
-#### getWhoisResponse
+Both functions are nearly identical, synchronous and as a result, comparing them is beyond the scope of this article.
 
-### cancellations
+#### getWhoisResponse - C&#35;
 
-step by step
+This is the busiest function of the project, let's take a close look at what's different between both implementations:
 
-### exceptions
+```c#
+private static async Task<FSharpOption<Models.WhoisResponse>> GetWhoisResponse(
+    string apiUrlFormat,
+    string domain)
+{
+    FSharpOption<Models.WhoisResponse> response = null;
 
-step by step
+    InputValidation.whoisInputValidation(apiUrlFormat, domain);
+
+    var apiUrl = string.Format(apiUrlFormat, domain);
+
+    var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+    var cancellationToken = cancellationTokenSource.Token;
+
+    var client = new HttpClient();
+
+    var apiResponse = await client.GetAsync(
+        apiUrl,
+        cancellationToken);
+
+    if (apiResponse.IsSuccessStatusCode)
+    {
+        var serializer = new XmlSerializer(typeof(Models.WhoisRecord));
+
+        await using Stream reader = await apiResponse.Content.ReadAsStreamAsync(cancellationToken);
+
+        response = Mappers.toWhoisResponse(
+            DateTime.Now,
+            domain,
+            (Models.WhoisRecord)serializer.Deserialize(reader));
+    }
+
+    return response;
+}
+```
+
+#### getWhoisResponse - F&#35;
+
+```f#
+let getWhoisResponse (apiUrlFormat: string) (domain: string) =
+    InputValidation.whoisInputValidation apiUrlFormat domain
+
+    let apiUrl = String.Format(apiUrlFormat, domain)
+
+    let cancellationTokenSource =
+        new CancellationTokenSource(TimeSpan.FromSeconds(3.0))
+
+    let cancellationToken = cancellationTokenSource.Token
+
+    let client = new HttpClient()
+
+    async {
+        let! apiResponse =
+            client.GetAsync(apiUrl, cancellationToken)
+            |> Async.AwaitTask
+
+        if apiResponse.IsSuccessStatusCode then
+            let serializer = XmlSerializer(typeof<WhoisRecord>)
+
+            let! stream =
+                apiResponse.Content.ReadAsStreamAsync(cancellationToken)
+                |> Async.AwaitTask
+
+            let whoisRecord =
+                serializer.Deserialize(stream) :?> WhoisRecord
+
+            return Mappers.toWhoisResponse DateTime.Now domain whoisRecord
+        else
+            return Option.None
+    }
+```
 
 ## further reading
 

@@ -83,7 +83,7 @@ Let's start with the reference material and terminology:
 * `expr := async { aexpr }` - complete syntax for asynchronous expressions. Selected `aexpr` examples:
     * `do!` - execute async (`Async<unit>`).
     * `let!` - execute and bind async (`Async<T>`).
-    * `return! expr` - tailcall to async
+    * `return! expr` - return async expression
     * `return expr` - return result of async expression
 
 But here is where it gets interesting and where most implementation challenges are going to surface:
@@ -248,6 +248,10 @@ let getWhoisResponse (apiUrlFormat: string) (domain: string) : Async<WhoisRespon
     let client = new HttpClient()
 
     async {
+        // call GetAsync
+        // translate Task to Async
+        // execute the asynchronous expression
+        // bind its result to apiResponse
         let! apiResponse =
             client.GetAsync(apiUrl, cancellationToken)
             |> Async.AwaitTask
@@ -255,10 +259,16 @@ let getWhoisResponse (apiUrlFormat: string) (domain: string) : Async<WhoisRespon
         if apiResponse.IsSuccessStatusCode then
             let serializer = XmlSerializer(typeof<WhoisRecord>)
 
+            // call ReadAsStreamAsync
+            // translate Task to Async
+            // execute the asynchronous expression
+            // bind its result to stream
             let! stream =
                 apiResponse.Content.ReadAsStreamAsync(cancellationToken)
                 |> Async.AwaitTask
 
+            // deserialize stream to obj
+            // downcast to WhoisRecord
             let whoisRecord =
                 serializer.Deserialize(stream) :?> WhoisRecord
 

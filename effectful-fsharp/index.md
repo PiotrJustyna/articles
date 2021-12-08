@@ -81,9 +81,9 @@ Let's start with the reference material and terminology:
 * `async { }` - computation expression/asynchronous expression. All expressions of such form are of type `Async<T>` for
   some `T`. [*source*](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/async-padl-revised-v2.pdf)
 * `expr := async { aexpr }` - complete syntax for asynchronous expressions. Selected `aexpr` examples:
-    * `do!` - execute async (`Async<unit>`).
-    * `let!` - execute and bind async (`Async<T>`).
-    * `return! expr` - return async expression
+    * `do!` - execute async (`Async<unit>`)
+    * `let!` - execute and bind async (`Async<T>`)
+    * `return! expr` - execute async expression and return
     * `return expr` - return result of async expression
 
 But here is where it gets interesting and where most implementation challenges are going to surface:

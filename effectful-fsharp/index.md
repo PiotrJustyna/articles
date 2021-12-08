@@ -11,6 +11,8 @@
       - [log](#log)
       - [getWhoisResponse - C&#35;](#getwhoisresponse---c)
       - [getWhoisResponse - F&#35;](#getwhoisresponse---f)
+      - [differences](#differences-1)
+  - [conclusion](#conclusion)
   - [further reading](#further-reading)
 
 # practical functional refactoring tips for the imperative world - part 2: effectful f&#35;
@@ -20,7 +22,7 @@
 This article covers a practical to follow refactoring workflow which helps transform difficult to manage legacy code
 into a more functional, easier to maintain version of itself. It is a follow up to an article I published last quarter
 which covered specifically the pure components of any program. You can find
-it [here](https://github.com/PiotrJustyna/articles/blob/main/refactoring-tips/index.md). Every computer program consists
+it [here: practical functional refactoring tips for the imperative world](https://github.com/PiotrJustyna/articles/blob/main/refactoring-tips/index.md). Every computer program consists
 of a mixture of two types of code:
 
 * **pure code** - no side effects, code executed multiple times with the same input always yields the same results (
@@ -86,21 +88,21 @@ Let's start with the reference material and terminology:
 
 But here is where it gets interesting and where most implementation challenges are going to surface:
 
-* C# - F# interop (`Async` vs `Task`) TODO, covered in getWhoisResponse
+* C# - F# interop (`Async` vs `Task`)
 * exceptions
-    * C#'s exception types are supported
+    * C# exception types are supported
 * cancellations
     * C#'s `CancellationTokenSource` and `CancellationToken` are both supported
-    * cancellation tokens are implicitly propagated through the execution of an asynchronous operation.
+    * cancellation tokens are implicitly propagated through the execution of nested asynchronous operations
     * cancellation tokens are provided at the entry point to the execution of an asynchronous computation,
       e.g.: `Async.RunSynchronously`, `Async.StartImmediate`, `Async.Start`
-    * cancelling nested asynchronous executions - cancellation tokens are passed implicitly to nested asynchronous expressions, but depending on how asynchronous work gets started, cancellations are handled differently in the nested operations, e.g.:
+    * cancelling nested asynchronous expressions: cancellation tokens are passed implicitly to nested asynchronous expressions, but depending on how asynchronous work gets started, cancellations are handled differently in the nested operations, e.g.:
       * [Async.Start](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asyncstart) - If the parent computation is canceled, no child computations are canceled.
       * [Async.StartChild](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async#asyncstartchild) - If the parent computation is canceled, the child computation is also canceled.
 
 ## mercury-functional
 
-In the article I published previously, we went through refactoring the pure responsibilities out of
+In the article I published previously [here: practical functional refactoring tips for the imperative world](https://github.com/PiotrJustyna/articles/blob/main/refactoring-tips/index.md), we went through refactoring the pure responsibilities out of
 C# [mercury-legacy](https://github.com/PiotrJustyna/mercury-legacy)
 into [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functional) - a C#-F# hybrid where the pure
 code was written in F# and the effectful code was written in C#.
@@ -108,6 +110,15 @@ code was written in F# and the effectful code was written in C#.
 This time, we are going to need a new
 repository: [mercury-functional](https://github.com/PiotrJustyna/mercury-functional) written exclusively in F# and based
 on [mercury-pure-functional](https://github.com/PiotrJustyna/mercury-pure-functional).
+
+Previously, we isolated all pure responsibilities and divided them between 4 F# modules:
+
+* Models
+* InputValidation
+* Mappers
+* BusinessLogic
+
+Leaving the Host written in C#. This time, we will be focusing on the Host project.
 
 ### mercury code
 
@@ -224,7 +235,7 @@ private static async Task<FSharpOption<Models.WhoisResponse>> GetWhoisResponse(
 #### getWhoisResponse - F&#35;
 
 ```f#
-let getWhoisResponse (apiUrlFormat: string) (domain: string) =
+let getWhoisResponse (apiUrlFormat: string) (domain: string) : Async<WhoisResponse option> =
     InputValidation.whoisInputValidation apiUrlFormat domain
 
     let apiUrl = String.Format(apiUrlFormat, domain)
@@ -257,8 +268,50 @@ let getWhoisResponse (apiUrlFormat: string) (domain: string) =
     }
 ```
 
+#### differences
+
+* code spanning from input validation to `HttpClient` creation is virtually identical in both scenarios, but what deserves special attention is that the `CancellationToken`\\`CancellationTokenSource` classes are usable both from C# and F#. What follows is where the more notable differences start.
+* while the C# version does not need the `async` code block, the F# counterpart does. That allows for more visually pleasing, easier to follow syntax inside that block on the F# side (leveraging the `!`notation). It is not uncommon for asynchronous F# functions to only consist of one `async` block and nothing else outside it.
+* while the C# return type is `Task<FSharpOption<Models.WhoisResponse>>`, the F# return type is `Async<WhoisResponse option>`. C# relies on the `Task` type to describe asynchrony while F# relies on the `Async` type. Conversions and interop between both is going to be covered in following bullet points. F#'s `Async` return type is a result of using the `async` block and what should be noted is that while on the C# side, we start and await the asynchronous work, on the F# side, we only specify how it should be executed. The asynchronous expression is not actually started in the `getWhoisResponse` function. It is the caller's responsibility to execute the returned `Async` object and in our case the caller does it like so:
+
+  ```f#
+    let job =
+        async { return! getWhoisResponse apiUrlFormat domain }
+
+    let response = Async.RunSynchronously(job)
+  ```
+  
+  That is one of the key differences between C# and F# approaches to asynchrony.
+
+* `HttpClient`: it is important to note that while the reusable (C#/F#) `HttpClient` methods are executed the same way in both languages, there are two critical differences:
+  * F#'s `let!` execution and binding of the asynchronous expression vs C#'s `await`. Both result in creating an object of type `HttpResponseMessage`.
+  * while the C# code (when un`awaited`) returns a `Task`, the F# code needs to translate that `Task` into a type it depends on for asynchrony (`Async`). To do that, we simply pipe the returned `Task` into the `Async`'s `AwaitTask` which translates `Task` to `Async` (on which we can use the `!` notation).
+
+  The same we can observe in the lines using `ReadAsStreamAsync` and that is basically how C# - F# interop works: `Task`s get translated to `Async` objects. More details and examples in a very comprehensive paper F# creators produced:  [The F# Asynchronous Programming Model](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/async-padl-revised-v2.pdf).
+
+* Casting. While the C# part's casting looks familiar:
+
+  ```c#
+  (Models.WhoisRecord)serializer.Deserialize(reader)
+  ```
+  its F# counterpart is slightly more exotic:
+
+  ```f#
+  serializer.Deserialize(stream) :?> WhoisRecord
+  ```
+
+  The `:?>` operator performs a dynamic downcast, which means that the success of the cast is determined at run time. [source - downcasting](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/casting-and-conversions#downcasting)
+
+## conclusion
+
+Those are the most notable differences between asynchrony in both languages. F# does not introduce any revolutionary concepts in comparison to C#, the differences are more subtle. What the engineers gain, though, is an asynchrnous programming model that is more difficult to use **incorrectly**, e.g. asynchrnonous work cannot be fired-and-forgotten by mistake - if fire-and-forget is the intention, such work needs to be kicked off explicitly and intentionally (as opposed to C#'s `await` omission, which is a mistake in most scenarios). This article gently introduces fundamental concepts of asynchronous programming in F# and should serve as a good starting point for introducing F# and experimenting with it. In upcoming articles we will share more low level details, common pitfalls of asynchronous code (both in C# and in F#) and how to avoid them.
+
+The overall objective of the "practical functional refactoring tips" series of articles is not necessarily to introduce F#, but rather to expose the reader to a more functional way of thinking and breaking down programming problems. Doing so often tends to lead to producing more maintainable, concise, easier to follow code. Having mastered the generally applicable basics of functional thinking (like the explicit separation of pure and effectful responsibilities), it should not be a big challenge to introduce any language from the large, and constantly growing, functional family of languages like F#, Haskell, Erlang, Scala, etc.
+
 ## further reading
 
 * [Async programming in F#](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/async)
 * [The F# Asynchronous Programming Model](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/async-padl-revised-v2.pdf)
 * [F# Async Guide](https://medium.com/@eulerfx/f-async-guide-eb3c8a2d180a)
+* [Symbol and operator reference](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/symbol-and-operator-reference/)
+* [Casting and conversions (F#)](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/casting-and-conversions)

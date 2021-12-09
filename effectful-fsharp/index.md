@@ -45,7 +45,7 @@ responsibilities of our code. That gave everybody the much needed time to get to
 C#-F# interop tricks and gotchas. The basic building blocks of any new language.
 
 Now that those aspects are no longer a mystery, we are ready for the more tricky effectful code. Why tricky? Everything
-boils down to how to work with asynchrous code...
+boils down to how to work with asynchronous code...
 
 ## asynchronous code
 
@@ -65,7 +65,7 @@ The trick to understanding asynchronous programming is to accept what it is/is n
 Let's start with the reference material and terminology:
 
 * `Async<T>` type represents composable asynchronous operations
-* `Async` module contains functions which:
+* `Async` module contains functions that:
     * schedule
     * compose
     * transform
@@ -160,7 +160,7 @@ let main argv =
 
     let response = Async.RunSynchronously(job)
 
-    printfn $"{response.ToString()}"
+    printfn $"{response}"
 
     log "function execution finished"
 
@@ -171,8 +171,8 @@ let main argv =
 
 * In the C# version, the `response` object is a result of an asynchronous function (`GetWhoisResponse`) being started and `await`ed.
 * In the F# version, we have slightly more explicitly defined options of how the asynchronous `job` can get executed:
-  * very much like a traditional C# `Task`, `job` only gets created and not immediately invoked
-  * `response` is a result of `job` getting executed synchronously (no real benefits running it synchronously in our case), but other options are also available, e.g. `Async.StartChild` (for asynchronous execution).
+  * unlike a traditional C# `Task`, `job` does not immediately run
+  * `response` is a result of `job` getting executed (on the thread we are running on, hence the `RunSynchronously`), but other options are also available, e.g. `Async.StartChild` (for asynchronous execution, allowing us to do other work while it processes).
 * `!` notation allows us to nearly seamlessly introduce `Async` type into the code without too many changes. The key difference beeing the `async` vs expression results:
   * `let! pat = expr in aexpr` - execute & bind async. Example:
     ```f#
@@ -280,9 +280,9 @@ let getWhoisResponse (apiUrlFormat: string) (domain: string) : Async<WhoisRespon
 
 #### differences
 
-* code spanning from input validation to `HttpClient` creation is virtually identical in both scenarios, but what deserves special attention is that the `CancellationToken`\\`CancellationTokenSource` classes are usable both from C# and F#. What follows is where the more notable differences start.
-* while the C# version does not need the `async` code block, the F# counterpart does. That allows for more visually pleasing, easier to follow syntax inside that block on the F# side (leveraging the `!`notation). It is not uncommon for asynchronous F# functions to only consist of one `async` block and nothing else outside it.
-* while the C# return type is `Task<FSharpOption<Models.WhoisResponse>>`, the F# return type is `Async<WhoisResponse option>`. C# relies on the `Task` type to describe asynchrony while F# relies on the `Async` type. Conversions and interop between both is going to be covered in following bullet points. F#'s `Async` return type is a result of using the `async` block and what should be noted is that while on the C# side, we start and await the asynchronous work, on the F# side, we only specify how it should be executed. The asynchronous expression is not actually started in the `getWhoisResponse` function. It is the caller's responsibility to execute the returned `Async` object and in our case the caller does it like so:
+* code spanning from input validation to `HttpClient` creation is virtually identical in both scenarios, but what deserves special attention is that the `CancellationToken`/`CancellationTokenSource` classes are usable both from C# and F#. What follows is where the more notable differences start.
+* while the C# version has an `async` marker in the method signature, the F# version has an explicit `async` code block. On the F# side, awaiting results is via `!`notation, for C#, it's via the `await` keyword. It is not uncommon for asynchronous F# functions to only consist of one `async` block and nothing else outside it.
+* while the C# return type is `Task<FSharpOption<Models.WhoisResponse>>`, the F# return type is `Async<WhoisResponse option>`. C# relies on the `Task` type to describe asynchrony while F# relies on the `Async` type. Conversions and interop between both is going to be covered in following bullet points. F#'s `Async` return type is a result of using the `async` block and what should be noted is that while on the C# side, we have triggered the starting of  he work and hand off a `Task` (that will `await` the asynchronous work completing), on the F# side, we only specify how it should be executed - we are just returning a Builder (think of it as a recipe for doing the work). The actual work is not started in the `getWhoisResponse` function itself but deferred. It is the caller's responsibility to run the returned `Async` object (it can even do that multiple times, whereas with a Task, all you can do is `await` the result of the [single] already-running activity). In our case, the caller does it like so:
 
   ```f#
     let job =
@@ -295,9 +295,9 @@ let getWhoisResponse (apiUrlFormat: string) (domain: string) : Async<WhoisRespon
 
 * `HttpClient`: it is important to note that while the reusable (C#/F#) `HttpClient` methods are executed the same way in both languages, there are two critical differences:
   * F#'s `let!` execution and binding of the asynchronous expression vs C#'s `await`. Both result in creating an object of type `HttpResponseMessage`.
-  * while the C# code (when un`awaited`) returns a `Task`, the F# code needs to translate that `Task` into a type it depends on for asynchrony (`Async`). To do that, we simply pipe the returned `Task` into the `Async`'s `AwaitTask` which translates `Task` to `Async` (on which we can use the `!` notation).
+  * while the C# code (when un`awaited`) returns a `Task`, the F# code needs to translate that `Task` into the type it primarily uses to represent asynchronous activities (`Async`). To do that, we simply pipe the returned `Task` into the `Async`'s `AwaitTask` which translates `Task` to `Async` (on which we can use the `!` notation).
 
-  The same we can observe in the lines using `ReadAsStreamAsync` and that is basically how C# - F# interop works: `Task`s get translated to `Async` objects. More details and examples in a very comprehensive paper F# creators produced:  [The F# Asynchronous Programming Model](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/async-padl-revised-v2.pdf).
+  The same applies in the lines using `ReadAsStreamAsync`, and that is basically how C# - F# interop works: `Task`s get translated to `Async` objects. More details and examples in a very comprehensive paper F# creators produced:  [The F# Asynchronous Programming Model](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/async-padl-revised-v2.pdf).
 
 * Casting. While the C# part's casting looks familiar:
 
@@ -314,7 +314,7 @@ let getWhoisResponse (apiUrlFormat: string) (domain: string) : Async<WhoisRespon
 
 ## conclusion
 
-Those are the most notable differences between asynchrony in both languages. F# does not introduce any revolutionary concepts in comparison to C#, the differences are more subtle. What the engineers gain, though, is an asynchrnous programming model that is more difficult to use **incorrectly**, e.g. asynchrnonous work cannot be fired-and-forgotten by mistake - if fire-and-forget is the intention, such work needs to be kicked off explicitly and intentionally (as opposed to C#'s `await` omission, which is a mistake in most scenarios). This article gently introduces fundamental concepts of asynchronous programming in F# and should serve as a good starting point for introducing F# and experimenting with it. In upcoming articles we will share more low level details, common pitfalls of asynchronous code (both in C# and in F#) and how to avoid them.
+Those are the most notable differences between asynchrony in both languages. F# does not introduce any revolutionary concepts in comparison to C# (in fact, the Async support in F# long predates the introduction of `async`-`await` into C#), the differences are more subtle. What the engineers gain, though, is an asynchronous programming model that is more difficult to use **incorrectly**, e.g. asynchronous work cannot be fired-and-forgotten by mistake - if fire-and-forget is the intention, such work needs to be kicked off explicitly and intentionally (as opposed to C#'s `await` omission, which is a mistake in most scenarios). This article gently introduces fundamental concepts of asynchronous programming in F# and should serve as a good starting point for introducing F# and experimenting with it. In upcoming articles we will share more low level details, common pitfalls of asynchronous code (both in C# and in F#) and how to avoid them.
 
 The overall objective of the "practical functional refactoring tips" series of articles is not necessarily to introduce F#, but rather to expose the reader to a more functional way of thinking and breaking down programming problems. Doing so often tends to lead to producing more maintainable, concise, easier to follow code. Having mastered the generally applicable basics of functional thinking (like the explicit separation of pure and effectful responsibilities), it should not be a big challenge to introduce any language from the large, and constantly growing, functional family of languages like F#, Haskell, Erlang, Scala, etc.
 

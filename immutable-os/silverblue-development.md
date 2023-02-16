@@ -4,7 +4,7 @@ TBD
 
 ## fedora silverblue
 
-I've been using linux for work and personal projects since early 2000's, but the concept of immutable operating systems I discovered only recently and it immedialy captured my interest. I stopped counting how many times I've gotten myself in trouble messing up dependencies on my development machines which resulted in either me losing my progress, code or just time. [Fedora Silverblue](https://silverblue.fedoraproject.org) comes to the rescue and gives hope to engineers, who are permanently short on time, to get their experiments started and finalized in predictable time.
+I've been using linux for work and personal projects since early 2000's, but the concept of immutable operating systems I discovered only recently and it immedialy captured my interest. I stopped counting how many times I've gotten myself in trouble messing up dependencies on my development machines which resulted in either me losing my progress, code or just time. [Fedora Silverblue](https://silverblue.fedoraproject.org) comes to the rescue and gives hope to engineers who are permanently short on time, to get their experiments started and finalized in predictable time.
 
 ## dev containers
 
